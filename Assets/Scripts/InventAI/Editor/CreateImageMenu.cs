@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Inventai;
 using System.Linq;
+using System.Collections.Generic;
 
 /// <summary>
 /// Provides menu items and utility methods for creating, editing, and batch-generating images with InventAI in the Unity Editor.
@@ -67,6 +68,12 @@ public class CustomCreateMenu : MonoBehaviour
     public static void BatchGenerateInventaiImages()
     {
         BatchPromptWindow.Open();
+    }
+
+    [MenuItem("Assets/Create/Animation Sprite with InventAI")]
+    public static void CreateInventaiAnimationSprite()
+    {
+        InventaiAnimationPromptWindow.Open();
     }
 
     private static async void EditAndSaveImage(string imagePath, string prompt)
@@ -339,6 +346,8 @@ public class CustomCreateMenu : MonoBehaviour
     public static async void ApplyPresetToAllImages()
     {
         string[] guids = AssetDatabase.FindAssets("t:Texture2D", new[] { "Assets" });
+        guids = guids.Where(guid => !AssetDatabase.GUIDToAssetPath(guid).Contains("TextMesh Pro")).ToArray();
+
         if (guids.Length == 0)
         {
             EditorUtility.DisplayDialog("InventAI", "No images found in Assets folder.", "OK");
@@ -348,36 +357,38 @@ public class CustomCreateMenu : MonoBehaviour
         string modelId = InventaiSettings.ModelId;
         string baseUrl = InventaiSettings.BaseUrl;
         string context = InventaiPromptUtils.GetSelectedPresetAsString();
-        bool canceled = false;
 
+        EditorUtility.DisplayProgressBar("InventAI", "Generating images with AI...", 0.0f);
+
+        // Prepare tasks for all image generations (network only, no Unity objects)
+        var tasks = new List<Task<(string assetPath, byte[] imageData)>>();
         for (int i = 0; i < guids.Length; i++)
         {
             string assetPath = AssetDatabase.GUIDToAssetPath(guids[i]);
             string fileName = Path.GetFileNameWithoutExtension(assetPath);
-
-            if (EditorUtility.DisplayCancelableProgressBar("Applying preset to all images", $"Processing image {i + 1} of {guids.Length} called {fileName}...", (float)i / guids.Length))
+            tasks.Add(Task.Run(async () =>
             {
-                canceled = true;
-                break;
-            }
-            try
-            {
-                Texture2D texture = await InventaiImageGeneration.GenerateTextureFromPromptAsync(fileName, apiKey, modelId, baseUrl, context);
-                InventaiImageGeneration.SaveTextureAsPng(texture, assetPath);
-                AssetDatabase.ImportAsset(assetPath);
-                // Set import settings to Sprite (Single)
-                SetTextureImporterToSprite(assetPath);
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"Error processing {assetPath}: {e.Message}");
-            }
+                var imageData = await InventaiImageGeneration.GenerateImageDataFromPromptAsync(fileName, apiKey, modelId, baseUrl, context);
+                return (assetPath, imageData);
+            }));
         }
+
+        var results = await Task.WhenAll(tasks);
+
+        // Sequentially save and import in the Editor, with progress
+        for (int i = 0; i < results.Length; i++)
+        {
+            var (assetPath, imageData) = results[i];
+            EditorUtility.DisplayProgressBar("InventAI", $"Saving and importing {Path.GetFileName(assetPath)} ({i + 1}/{results.Length})", (float)i / results.Length);
+            Texture2D texture = new Texture2D(2, 2);
+            texture.LoadImage(imageData);
+            InventaiImageGeneration.SaveTextureAsPng(texture, assetPath);
+            AssetDatabase.ImportAsset(assetPath);
+            SetTextureImporterToSprite(assetPath);
+        }
+
         EditorUtility.ClearProgressBar();
-        if (canceled)
-            EditorUtility.DisplayDialog("InventAI", "Operation canceled.", "OK");
-        else
-            EditorUtility.DisplayDialog("InventAI", $"Preset applied to {guids.Length} images.", "OK");
+        EditorUtility.DisplayDialog("InventAI", $"Preset applied to {guids.Length} images.", "OK");
     }
 
     /// <summary>
@@ -391,6 +402,101 @@ public class CustomCreateMenu : MonoBehaviour
         {
             importer.textureType = TextureImporterType.Sprite;
             importer.spriteImportMode = SpriteImportMode.Single;
+            importer.SaveAndReimport();
+        }
+    }
+
+    private class InventaiAnimationPromptWindow : EditorWindow
+    {
+        private string prompt = "";
+        public static void Open()
+        {
+            var window = ScriptableObject.CreateInstance<InventaiAnimationPromptWindow>();
+            window.titleContent = new GUIContent("InventAI Animation Prompt");
+            window.position = new Rect(Screen.width / 2, Screen.height / 2, 400, 100);
+            window.ShowUtility();
+        }
+        void OnGUI()
+        {
+            GUILayout.Label("Enter a prompt for the animation sprite:", EditorStyles.wordWrappedLabel);
+            prompt = EditorGUILayout.TextField("Prompt", prompt);
+            GUILayout.Space(10);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Generate Animation Sprite"))
+            {
+                if (!string.IsNullOrEmpty(prompt))
+                {
+                    CustomCreateMenu.GenerateAndSaveAnimationSprite(prompt);
+                    Close();
+                }
+                else
+                {
+                    EditorUtility.DisplayDialog("Error", "Prompt cannot be empty", "OK");
+                }
+            }
+            if (GUILayout.Button("Cancel"))
+            {
+                Close();
+            }
+            GUILayout.EndHorizontal();
+        }
+    }
+
+    /// <summary>
+    /// Generates and saves an animation sprite from a prompt.
+    /// </summary>
+    /// <param name="prompt">The prompt to generate the animation sprite from.</param>
+    public static async void GenerateAndSaveAnimationSprite(string prompt)
+    {
+        EditorUtility.DisplayProgressBar("Generating animation sprite with InventAI", "Please wait...", 0.5f);
+        try
+        {
+            string apiKey = InventaiSettings.ApiKey;
+            string modelId = InventaiSettings.ModelId;
+            string baseUrl = InventaiSettings.BaseUrl;
+            string context = InventaiPromptUtils.GetSelectedPresetAsString();
+            string fullPrompt =
+                "You are generating a high-quality 2D game asset sprite sheet for use in a professional game engine. " +
+                "The image should depict a clearly defined subject, with a fully transparent background. " +
+                "Do not include any text, watermarks, borders, or extraneous elements. The sprite sheet should be high resolution, clean, and ready for direct use in a 2D game. " +
+                "If the user prompt does not specify a background, assume full transparency. " +
+                "This is for an animation for a game, where the final image is divided into multiple sub-images, each serving as a continuous animation keyframe. " +
+                "Design the sequence to depict the keyframes transition smoothly and continuously, and include a number of frames that will be used to create the animation. " +
+                (!string.IsNullOrWhiteSpace(context) ? $"Request context (style, genre, etc): {context} " : "") +
+                $"User prompt (what the user wants to see): {prompt}";
+
+            Texture2D texture = await InventaiImageGeneration.GenerateTextureFromCustomPromptAsync(fullPrompt, apiKey, modelId, baseUrl);
+
+            // Save as PNG in the selected folder
+            string randomString = System.Guid.NewGuid().ToString().Substring(0, 8);
+            string path = GetSelectedPathOrFallback() + "/InventAI_AnimationSprite_" + randomString + ".png";
+            InventaiImageGeneration.SaveTextureAsPng(texture, path);
+            AssetDatabase.ImportAsset(path);
+            // Set import settings to Sprite (Multiple)
+            SetTextureImporterToSpriteMultiple(path);
+            EditorUtility.DisplayDialog("InventAI", "Animation sprite created at: " + path, "OK");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Request error: {e.Message}");
+        }
+        finally
+        {
+            EditorUtility.ClearProgressBar();
+        }
+    }
+
+    /// <summary>
+    /// Sets the import settings of a texture asset to Sprite (Multiple) and reimports it.
+    /// </summary>
+    /// <param name="path">The asset path of the texture.</param>
+    private static void SetTextureImporterToSpriteMultiple(string path)
+    {
+        var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+        if (importer != null)
+        {
+            importer.textureType = TextureImporterType.Sprite;
+            importer.spriteImportMode = SpriteImportMode.Multiple;
             importer.SaveAndReimport();
         }
     }

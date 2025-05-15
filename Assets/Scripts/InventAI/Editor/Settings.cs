@@ -217,7 +217,7 @@ static class InventaiSettingsProvider
                     else
                         preset.customInspiration = "";
 
-                    preset.customPromptAddition = EditorGUILayout.TextField("Custom Prompt Addition", preset.customPromptAddition);
+                    preset.customPromptAddition = EditorGUILayout.TextField("Additional Prompt", preset.customPromptAddition);
 
                     EditorGUILayout.BeginHorizontal();
                     if (GUILayout.Button("Delete Preset"))
