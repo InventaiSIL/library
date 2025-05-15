@@ -64,6 +64,14 @@ public class SpriteRendererCustomEditor : Editor
             float targetWorldSize = Mathf.Max(objectSize.x, objectSize.y);
             float textureSize = Mathf.Max(texture.width, texture.height);
             float pixelsPerUnit = textureSize / targetWorldSize;
+
+            // Resize texture if needed (match the largest dimension to targetWorldSize * pixelsPerUnit)
+            int targetPixelSize = Mathf.RoundToInt(targetWorldSize * pixelsPerUnit);
+            if (texture.width != targetPixelSize || texture.height != targetPixelSize)
+            {
+                texture = ResizeTexture(texture, targetPixelSize, targetPixelSize);
+            }
+
             spriteRenderer.sprite = Sprite.Create(
                 texture,
                 new Rect(0, 0, texture.width, texture.height),
@@ -80,4 +88,26 @@ public class SpriteRendererCustomEditor : Editor
             EditorUtility.ClearProgressBar();
         }
     }
+
+    /// <summary>
+    /// Resizes a Texture2D to the specified width and height using bilinear filtering. Guarantees exact size.
+    /// </summary>
+    private static Texture2D ResizeTexture(Texture2D source, int width, int height)
+    {
+        RenderTexture rt = RenderTexture.GetTemporary(width, height);
+        rt.filterMode = source.filterMode;
+        RenderTexture.active = rt;
+        Graphics.Blit(source, rt);
+        Texture2D result = new Texture2D(width, height, source.format, false);
+        result.filterMode = source.filterMode;
+        result.wrapMode = source.wrapMode;
+        // Read the full rect, ensuring exact size
+        result.ReadPixels(new Rect(0, 0, width, height), 0, 0, false);
+        result.Apply();
+        RenderTexture.active = null;
+        RenderTexture.ReleaseTemporary(rt);
+        return result;
+    }
 }
+
+
