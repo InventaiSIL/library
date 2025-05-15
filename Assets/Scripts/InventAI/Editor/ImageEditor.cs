@@ -5,11 +5,18 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Inventai;
 
+/// <summary>
+/// Custom editor for UnityEngine.UI.Image that adds InventAI image generation functionality to the inspector.
+/// </summary>
 [CustomEditor(typeof(Image))]
 public class ImageInventaiEditor : Editor
 {
+    // Stores the user prompt for image generation
     private string prompt;
 
+    /// <summary>
+    /// Draws the custom inspector GUI, including the InventAI prompt and button.
+    /// </summary>
     public override void OnInspectorGUI()
     {
         DrawDefaultInspector();
@@ -17,6 +24,7 @@ public class ImageInventaiEditor : Editor
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("InventAI", EditorStyles.boldLabel);
 
+        // Prompt input field
         prompt = EditorGUILayout.TextField("Prompt", prompt);
         if (GUILayout.Button("Generate asset with InventAI"))
         {
@@ -31,6 +39,10 @@ public class ImageInventaiEditor : Editor
         }
     }
 
+    /// <summary>
+    /// Asynchronously generates an image from the prompt and applies it as a sprite to the target Image component.
+    /// </summary>
+    /// <param name="prompt">The user prompt for image generation.</param>
     private async void GenerateAndApplyAsset(string prompt)
     {
         EditorUtility.DisplayProgressBar("Generating asset with InventAI", "Please wait...", 0.5f);
@@ -41,6 +53,7 @@ public class ImageInventaiEditor : Editor
             string modelId = InventaiSettings.ModelId;
             string baseUrl = InventaiSettings.BaseUrl;
             string context = InventaiPromptUtils.GetSelectedPresetAsString();
+            // Generate the texture using the AI service
             Texture2D texture = await InventaiImageGeneration.GenerateTextureFromPromptAsync(prompt, apiKey, modelId, baseUrl, context);
             // For UI Images, use a default pixelsPerUnit of 100
             float pixelsPerUnit = 100f;

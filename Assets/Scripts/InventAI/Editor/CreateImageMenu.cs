@@ -7,6 +7,9 @@ using System.Threading.Tasks;
 using Inventai;
 using System.Linq;
 
+/// <summary>
+/// Provides menu items and utility methods for creating, editing, and batch-generating images with InventAI in the Unity Editor.
+/// </summary>
 public class CustomCreateMenu : MonoBehaviour
 {
     private static string pendingEditImagePath = null;
@@ -210,6 +213,9 @@ public class CustomCreateMenu : MonoBehaviour
         return path;
     }
 
+    /// <summary>
+    /// Batch window for entering multiple prompts (one per line) for batch image generation.
+    /// </summary>
     private class BatchPromptWindow : EditorWindow
     {
         private string promptsText = "";
@@ -247,6 +253,10 @@ public class CustomCreateMenu : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Generates and saves a batch of images, one for each prompt provided.
+    /// </summary>
+    /// <param name="prompts">Array of prompts, one per image.</param>
     public static async void BatchGenerateAndSaveImages(string[] prompts)
     {
         string apiKey = InventaiSettings.ApiKey;
@@ -283,5 +293,50 @@ public class CustomCreateMenu : MonoBehaviour
             EditorUtility.DisplayDialog("InventAI", "Batch generation canceled.", "OK");
         else
             EditorUtility.DisplayDialog("InventAI", $"Batch generation complete. {prompts.Length} images generated.", "OK");
+    }
+
+    /// <summary>
+    /// Finds all Texture2D assets in the Assets folder and applies the current preset to each, regenerating them with AI.
+    /// </summary>
+    public static async void ApplyPresetToAllImages()
+    {
+        string[] guids = AssetDatabase.FindAssets("t:Texture2D", new[] { "Assets" });
+        if (guids.Length == 0)
+        {
+            EditorUtility.DisplayDialog("InventAI", "No images found in Assets folder.", "OK");
+            return;
+        }
+        string apiKey = InventaiSettings.ApiKey;
+        string modelId = InventaiSettings.ModelId;
+        string baseUrl = InventaiSettings.BaseUrl;
+        string context = InventaiPromptUtils.GetSelectedPresetAsString();
+        bool canceled = false;
+
+        for (int i = 0; i < guids.Length; i++)
+        {
+            string assetPath = AssetDatabase.GUIDToAssetPath(guids[i]);
+            string fileName = Path.GetFileNameWithoutExtension(assetPath);
+
+            if (EditorUtility.DisplayCancelableProgressBar("Applying preset to all images", $"Processing image {i + 1} of {guids.Length} called {fileName}...", (float)i / guids.Length))
+            {
+                canceled = true;
+                break;
+            }
+            try
+            {
+                Texture2D texture = await InventaiImageGeneration.GenerateTextureFromPromptAsync(fileName, apiKey, modelId, baseUrl, context);
+                InventaiImageGeneration.SaveTextureAsPng(texture, assetPath);
+                AssetDatabase.ImportAsset(assetPath);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Error processing {assetPath}: {e.Message}");
+            }
+        }
+        EditorUtility.ClearProgressBar();
+        if (canceled)
+            EditorUtility.DisplayDialog("InventAI", "Operation canceled.", "OK");
+        else
+            EditorUtility.DisplayDialog("InventAI", $"Preset applied to {guids.Length} images.", "OK");
     }
 }

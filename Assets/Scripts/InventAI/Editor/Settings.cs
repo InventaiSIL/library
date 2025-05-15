@@ -3,6 +3,9 @@ using UnityEditor;
 using System.Collections.Generic;
 using System.Linq;
 
+/// <summary>
+/// Represents a single art preset for InventAI, including style, universe, genre, mood, color palette, inspiration, and custom fields.
+/// </summary>
 [System.Serializable]
 public class InventaiArtPreset
 {
@@ -23,6 +26,9 @@ public class InventaiArtPreset
     public string customInspiration;
 }
 
+/// <summary>
+/// Wrapper for serializing a list of InventaiArtPreset objects.
+/// </summary>
 [System.Serializable]
 public class InventaiArtPresetListWrapper
 {
@@ -30,6 +36,9 @@ public class InventaiArtPresetListWrapper
     public InventaiArtPresetListWrapper() { }
 }
 
+/// <summary>
+/// Provides the Unity Project Settings UI for InventAI, including API key, model, base URL, and art presets.
+/// </summary>
 static class InventaiSettingsProvider
 {
     private static List<InventaiArtPreset> _presets;

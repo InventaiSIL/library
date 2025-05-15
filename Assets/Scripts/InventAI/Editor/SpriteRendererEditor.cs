@@ -7,13 +7,20 @@ using Newtonsoft.Json; // Make sure to add this namespace
 using Inventai;
 using System;
 
-// Specify that this editor is for the SpriteRenderer component
+/// <summary>
+/// Custom editor for UnityEngine.SpriteRenderer that adds InventAI image generation functionality to the inspector.
+/// </summary>
 [CustomEditor(typeof(SpriteRenderer))]
 public class SpriteRendererCustomEditor : Editor
 {
+    // Stores the user prompt for image generation
     private string prompt;
+    // Shared HttpClient instance (not used directly in this script)
     private static readonly HttpClient client = new HttpClient();
 
+    /// <summary>
+    /// Draws the custom inspector GUI, including the InventAI prompt and button.
+    /// </summary>
     public override void OnInspectorGUI()
     {
         DrawDefaultInspector();
@@ -21,6 +28,7 @@ public class SpriteRendererCustomEditor : Editor
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("InventAI", EditorStyles.boldLabel);
 
+        // Prompt input field
         prompt = EditorGUILayout.TextField("Prompt", prompt);
         if (GUILayout.Button("Generate asset with InventAI"))
         {
@@ -35,6 +43,10 @@ public class SpriteRendererCustomEditor : Editor
         }
     }
 
+    /// <summary>
+    /// Asynchronously generates an image from the prompt and applies it as a sprite to the target SpriteRenderer.
+    /// </summary>
+    /// <param name="prompt">The user prompt for image generation.</param>
     private async void GenerateAndApplyAsset(string prompt)
     {
         EditorUtility.DisplayProgressBar("Generating asset with InventAI", "Please wait...", 0.5f);
@@ -45,6 +57,7 @@ public class SpriteRendererCustomEditor : Editor
             string modelId = InventaiSettings.ModelId;
             string baseUrl = InventaiSettings.BaseUrl;
             string context = InventaiPromptUtils.GetSelectedPresetAsString();
+            // Generate the texture using the AI service
             Texture2D texture = await InventaiImageGeneration.GenerateTextureFromPromptAsync(prompt, apiKey, modelId, baseUrl, context);
             SpriteRenderer spriteRenderer = (SpriteRenderer)target;
             Vector2 objectSize = spriteRenderer.bounds.size;
