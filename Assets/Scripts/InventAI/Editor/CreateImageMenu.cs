@@ -5,6 +5,7 @@ using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Inventai;
+using System.Linq;
 
 public class CustomCreateMenu : MonoBehaviour
 {
@@ -18,13 +19,13 @@ public class CustomCreateMenu : MonoBehaviour
         InventaiPromptWindow.Open();
     }
 
-    [MenuItem("Assets/Edit with InventAI...", true)]
+    [MenuItem("Assets/Edit with InventAI", true)]
     private static bool ValidateEditWithGptImage1()
     {
         return Selection.activeObject is Texture2D;
     }
 
-    [MenuItem("Assets/Edit with InventAI...")]
+    [MenuItem("Assets/Edit with InventAI")]
     private static void EditWithGptImage1()
     {
         var tex = Selection.activeObject as Texture2D;
@@ -38,13 +39,13 @@ public class CustomCreateMenu : MonoBehaviour
         InventaiPromptWindow.Open();
     }
 
-    [MenuItem("Assets/Create variant with InventAI...", true)]
+    [MenuItem("Assets/Create variant with InventAI", true)]
     private static bool ValidateCreateVariantWithInventAI()
     {
         return Selection.activeObject is Texture2D;
     }
 
-    [MenuItem("Assets/Create Variant with InventAI...")]
+    [MenuItem("Assets/Create variant with InventAI")]
     private static void CreateVariantWithInventAI()
     {
         var tex = Selection.activeObject as Texture2D;
@@ -57,6 +58,12 @@ public class CustomCreateMenu : MonoBehaviour
         isEditMode = false;
         isVariantMode = true;
         InventaiPromptWindow.Open();
+    }
+
+    [MenuItem("Assets/Create/Batch generate with InventAI")]
+    public static void BatchGenerateInventaiImages()
+    {
+        BatchPromptWindow.Open();
     }
 
     private static async void EditAndSaveImage(string imagePath, string prompt)
@@ -201,5 +208,80 @@ public class CustomCreateMenu : MonoBehaviour
             }
         }
         return path;
+    }
+
+    private class BatchPromptWindow : EditorWindow
+    {
+        private string promptsText = "";
+        public static void Open()
+        {
+            var window = ScriptableObject.CreateInstance<BatchPromptWindow>();
+            window.titleContent = new GUIContent("Batch InventAI Prompt");
+            window.position = new Rect(Screen.width / 2, Screen.height / 2, 500, 250);
+            window.ShowUtility();
+        }
+        void OnGUI()
+        {
+            GUILayout.Label("Enter one prompt per line:", EditorStyles.wordWrappedLabel);
+            promptsText = EditorGUILayout.TextArea(promptsText, GUILayout.Height(60));
+            GUILayout.Space(10);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Generate Batch"))
+            {
+                var prompts = promptsText.Split(new[] { '\n', '\r' }, System.StringSplitOptions.RemoveEmptyEntries);
+                if (prompts.Length > 0)
+                {
+                    CustomCreateMenu.BatchGenerateAndSaveImages(prompts);
+                    Close();
+                }
+                else
+                {
+                    EditorUtility.DisplayDialog("Error", "Please enter at least one prompt.", "OK");
+                }
+            }
+            if (GUILayout.Button("Cancel"))
+            {
+                Close();
+            }
+            GUILayout.EndHorizontal();
+        }
+    }
+
+    public static async void BatchGenerateAndSaveImages(string[] prompts)
+    {
+        string apiKey = InventaiSettings.ApiKey;
+        string modelId = InventaiSettings.ModelId;
+        string baseUrl = InventaiSettings.BaseUrl;
+        string context = InventaiPromptUtils.GetSelectedPresetAsString();
+        string folder = GetSelectedPathOrFallback();
+        bool canceled = false;
+        for (int i = 0; i < prompts.Length; i++)
+        {
+            if (EditorUtility.DisplayCancelableProgressBar("Batch generating with InventAI", $"Generating image {i + 1} of {prompts.Length}...", (float)i / prompts.Length))
+            {
+                canceled = true;
+                break;
+            }
+            try
+            {
+                string prompt = prompts[i].Trim();
+                if (string.IsNullOrEmpty(prompt)) continue;
+                Texture2D texture = await InventaiImageGeneration.GenerateTextureFromPromptAsync(prompt, apiKey, modelId, baseUrl, context);
+                string safePrompt = new string(prompt.Take(16).ToArray()).Replace(' ', '_');
+                string randomString = System.Guid.NewGuid().ToString().Substring(0, 8);
+                string path = folder + $"/InventAI_Batch_{i + 1}_{safePrompt}_{randomString}.png";
+                InventaiImageGeneration.SaveTextureAsPng(texture, path);
+                AssetDatabase.ImportAsset(path);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Request error: {e.Message}");
+            }
+        }
+        EditorUtility.ClearProgressBar();
+        if (canceled)
+            EditorUtility.DisplayDialog("InventAI", "Batch generation canceled.", "OK");
+        else
+            EditorUtility.DisplayDialog("InventAI", $"Batch generation complete. {prompts.Length} images generated.", "OK");
     }
 }
