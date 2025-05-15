@@ -15,22 +15,38 @@ namespace Inventai
         {
             var preset = InventaiSettingsProvider.GetSelectedPreset();
             var sb = new StringBuilder();
-            // Add default instruction for game asset sprite generation
-            sb.Append("Generate a game asset sprite. Prioritize a single element, with no background, unless otherwise specified. ");
             if (preset != null)
             {
-                if (!string.IsNullOrWhiteSpace(preset.artStyle))
-                    sb.Append($"Art Style: {(string.IsNullOrWhiteSpace(preset.customArtStyle) ? preset.artStyle : preset.customArtStyle)}; ");
-                if (!string.IsNullOrWhiteSpace(preset.universe))
-                    sb.Append($"Universe: {(string.IsNullOrWhiteSpace(preset.customUniverse) ? preset.universe : preset.customUniverse)}; ");
-                if (!string.IsNullOrWhiteSpace(preset.genre))
-                    sb.Append($"Genre: {(string.IsNullOrWhiteSpace(preset.customGenre) ? preset.genre : preset.customGenre)}; ");
-                if (!string.IsNullOrWhiteSpace(preset.mood))
-                    sb.Append($"Mood: {(string.IsNullOrWhiteSpace(preset.customMood) ? preset.mood : preset.customMood)}; ");
-                if (!string.IsNullOrWhiteSpace(preset.colorPalette))
-                    sb.Append($"Color Palette: {(string.IsNullOrWhiteSpace(preset.customColorPalette) ? preset.colorPalette : preset.customColorPalette)}; ");
-                if (!string.IsNullOrWhiteSpace(preset.inspiration))
-                    sb.Append($"Inspiration: {(string.IsNullOrWhiteSpace(preset.customInspiration) ? preset.inspiration : preset.customInspiration)}; ");
+                if (!string.IsNullOrWhiteSpace(preset.artStyle) && preset.artStyle != "Custom")
+                    sb.Append($"Art Style: {preset.artStyle}; ");
+                else if (preset.artStyle == "Custom" && !string.IsNullOrWhiteSpace(preset.customArtStyle))
+                    sb.Append($"Art Style: {preset.customArtStyle}; ");
+
+                if (!string.IsNullOrWhiteSpace(preset.universe) && preset.universe != "Custom")
+                    sb.Append($"Universe: {preset.universe}; ");
+                else if (preset.universe == "Custom" && !string.IsNullOrWhiteSpace(preset.customUniverse))
+                    sb.Append($"Universe: {preset.customUniverse}; ");
+
+                if (!string.IsNullOrWhiteSpace(preset.genre) && preset.genre != "Custom")
+                    sb.Append($"Genre: {preset.genre}; ");
+                else if (preset.genre == "Custom" && !string.IsNullOrWhiteSpace(preset.customGenre))
+                    sb.Append($"Genre: {preset.customGenre}; ");
+
+                if (!string.IsNullOrWhiteSpace(preset.mood) && preset.mood != "Custom")
+                    sb.Append($"Mood: {preset.mood}; ");
+                else if (preset.mood == "Custom" && !string.IsNullOrWhiteSpace(preset.customMood))
+                    sb.Append($"Mood: {preset.customMood}; ");
+
+                if (!string.IsNullOrWhiteSpace(preset.colorPalette) && preset.colorPalette != "Custom")
+                    sb.Append($"Color Palette: {preset.colorPalette}; ");
+                else if (preset.colorPalette == "Custom" && !string.IsNullOrWhiteSpace(preset.customColorPalette))
+                    sb.Append($"Color Palette: {preset.customColorPalette}; ");
+
+                if (!string.IsNullOrWhiteSpace(preset.inspiration) && preset.inspiration != "Custom")
+                    sb.Append($"Inspiration: {preset.inspiration}; ");
+                else if (preset.inspiration == "Custom" && !string.IsNullOrWhiteSpace(preset.customInspiration))
+                    sb.Append($"Inspiration: {preset.customInspiration}; ");
+
                 if (!string.IsNullOrWhiteSpace(preset.customPromptAddition))
                     sb.Append($"{preset.customPromptAddition}; ");
             }

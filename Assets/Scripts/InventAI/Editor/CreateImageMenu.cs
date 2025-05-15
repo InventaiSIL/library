@@ -346,7 +346,11 @@ public class CustomCreateMenu : MonoBehaviour
     public static async void ApplyPresetToAllImages()
     {
         string[] guids = AssetDatabase.FindAssets("t:Texture2D", new[] { "Assets" });
-        guids = guids.Where(guid => !AssetDatabase.GUIDToAssetPath(guid).Contains("TextMesh Pro")).ToArray();
+        guids = guids.Where(guid =>
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            return !path.Contains("TextMesh Pro") && !path.Contains("Settings");
+        }).ToArray();
 
         if (guids.Length == 0)
         {
@@ -535,5 +539,6 @@ public class CustomCreateMenu : MonoBehaviour
         }
     }
 }
+
 
 
