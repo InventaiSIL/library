@@ -199,7 +199,7 @@ public class CustomCreateMenu : MonoBehaviour
             string dir = Path.GetDirectoryName(imagePath);
             string name = Path.GetFileNameWithoutExtension(imagePath);
             string newPath = Path.Combine(dir, name + "_inventai_variant.png");
-            InventaiImageGeneration.SaveTextureAsPng(texture, newPatha;
+            InventaiImageGeneration.SaveTextureAsPng(texture, newPath);
             AssetDatabase.ImportAsset(newPath);
             SetTextureImporterToSprite(newPath);
             EditorUtility.DisplayDialog("InventAI", "Variant image created at: " + newPath, "OK");
