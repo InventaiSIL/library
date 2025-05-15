@@ -31,12 +31,12 @@ public class Hunyuan3DComponentEditor : Editor
         if (!string.IsNullOrWhiteSpace(component.prompt))
             requestJson["text"] = component.prompt;
 
-        if (component.image != null)
+        /*if (component.image != null)
         {
             byte[] pngBytes = component.image.EncodeToPNG();
             string base64 = System.Convert.ToBase64String(pngBytes);
             requestJson["image"] = base64;
-        }
+        }*/
 
         if (requestJson.Count == 0)
         {
