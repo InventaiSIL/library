@@ -40,7 +40,7 @@ public class ImageInventaiEditor : Editor
             string apiKey = InventaiSettings.ApiKey;
             string modelId = InventaiSettings.ModelId;
             string baseUrl = InventaiSettings.BaseUrl;
-            string context = InventaiSettings.Context;
+            string context = InventaiPromptUtils.GetSelectedPresetAsString();
             Texture2D texture = await InventaiImageGeneration.GenerateTextureFromPromptAsync(prompt, apiKey, modelId, baseUrl, context);
             // For UI Images, use a default pixelsPerUnit of 100
             float pixelsPerUnit = 100f;

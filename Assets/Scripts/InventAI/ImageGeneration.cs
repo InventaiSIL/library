@@ -11,7 +11,14 @@ public static class InventaiImageGeneration
         if (string.IsNullOrEmpty(apiKey))
             throw new Exception("API Key is missing in Inventai settings.");
 
-        string fullPrompt = string.IsNullOrWhiteSpace(context) ? prompt : prompt + "(Context: " + context + ")";
+        string fullPrompt =
+            "You are generating a high-quality 2D game asset sprite for use in a professional game engine. " +
+            "The image should depict a single, clearly defined subject, centered in the frame, with a fully transparent background. " +
+            "Do not include any text, watermarks, borders, or extraneous elements. The sprite should be high resolution, clean, and ready for direct use in a 2D game. " +
+            "If the user prompt does not specify a background, assume full transparency. " +
+            (!string.IsNullOrWhiteSpace(context) ? $"Request context (style, genre, etc): {context} " : "") +
+            $"User prompt (what the user wants to see): {prompt}";
+
         var result = await ImageGeneration.GenerateImageAsync(fullPrompt, apiKey, modelId, baseUrl);
         string imageBase64 = result.ImageBase64;
         byte[] imageData = Convert.FromBase64String(imageBase64);

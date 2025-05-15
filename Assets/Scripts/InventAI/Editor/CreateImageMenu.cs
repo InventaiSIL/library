@@ -143,7 +143,7 @@ public class CustomCreateMenu : MonoBehaviour
             string apiKey = InventaiSettings.ApiKey;
             string modelId = InventaiSettings.ModelId;
             string baseUrl = InventaiSettings.BaseUrl;
-            string context = InventaiSettings.Context;
+            string context = InventaiPromptUtils.GetSelectedPresetAsString();
             Texture2D texture = await InventaiImageGeneration.GenerateTextureFromPromptAsync(prompt, apiKey, modelId, baseUrl, context);
 
             // Save as PNG in the selected folder
