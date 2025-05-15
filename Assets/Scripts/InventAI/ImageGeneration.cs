@@ -116,4 +116,20 @@ public static class InventaiImageGeneration
         string imageBase64 = result.ImageBase64;
         return Convert.FromBase64String(imageBase64);
     }
+
+    /// <summary>
+    /// Edits an existing image using AI based on a prompt and returns the result as a PNG byte array.
+    /// </summary>
+    /// <param name="imagePath">The path to the image to edit.</param>
+    /// <param name="prompt">The prompt describing the desired edit.</param>
+    /// <param name="apiKey">The API key for authentication.</param>
+    /// <param name="baseUrl">The base URL of the image editing API.</param>
+    /// <returns>The edited image as a PNG byte array.</returns>
+    public static async Task<byte[]> EditImageWithGptToBytesAsync(string imagePath, string prompt, string apiKey, string baseUrl)
+    {
+        var result = await ImageGeneration.EditImageWithGptAsync(imagePath, prompt, apiKey, baseUrl);
+        string imageBase64 = result.ImageBase64;
+        byte[] editedImageData = System.Convert.FromBase64String(imageBase64);
+        return editedImageData;
+    }
 }

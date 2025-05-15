@@ -354,41 +354,75 @@ public class CustomCreateMenu : MonoBehaviour
             return;
         }
         string apiKey = InventaiSettings.ApiKey;
-        string modelId = InventaiSettings.ModelId;
         string baseUrl = InventaiSettings.BaseUrl;
         string context = InventaiPromptUtils.GetSelectedPresetAsString();
 
-        EditorUtility.DisplayProgressBar("InventAI", "Generating images with AI...", 0.0f);
+        EditorUtility.DisplayProgressBar("InventAI", "Editing images with AI...", 0.0f);
+        bool canceled = false;
+        int maxDegreeOfParallelism = 4;
+        var tasks = new List<Task<(string assetPath, byte[] imageData, int index)>>();
 
-        // Prepare tasks for all image generations (network only, no Unity objects)
-        var tasks = new List<Task<(string assetPath, byte[] imageData)>>();
+        // Start parallel AI edit tasks (only network and byte[] work)
         for (int i = 0; i < guids.Length; i++)
         {
             string assetPath = AssetDatabase.GUIDToAssetPath(guids[i]);
-            string fileName = Path.GetFileNameWithoutExtension(assetPath);
-            tasks.Add(Task.Run(async () =>
+            int index = i;
+            var task = Task.Run(async () =>
             {
-                var imageData = await InventaiImageGeneration.GenerateImageDataFromPromptAsync(fileName, apiKey, modelId, baseUrl, context);
-                return (assetPath, imageData);
-            }));
+                try
+                {
+                    byte[] imageData = await InventaiImageGeneration.EditImageWithGptToBytesAsync(assetPath, context, apiKey, baseUrl);
+                    return (assetPath, imageData, index);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"Request error for {assetPath}: {e.Message}");
+                    return (assetPath, null, index);
+                }
+            });
+            tasks.Add(task);
+            // Limit degree of parallelism
+            if (tasks.Count >= maxDegreeOfParallelism)
+            {
+                var finished = await Task.WhenAny(tasks);
+                tasks.Remove(finished);
+            }
         }
-
+        // Wait for all remaining tasks
         var results = await Task.WhenAll(tasks);
 
-        // Sequentially save and import in the Editor, with progress
-        for (int i = 0; i < results.Length; i++)
-        {
-            var (assetPath, imageData) = results[i];
-            EditorUtility.DisplayProgressBar("InventAI", $"Saving and importing {Path.GetFileName(assetPath)} ({i + 1}/{results.Length})", (float)i / results.Length);
-            Texture2D texture = new Texture2D(2, 2);
-            texture.LoadImage(imageData);
-            InventaiImageGeneration.SaveTextureAsPng(texture, assetPath);
-            AssetDatabase.ImportAsset(assetPath);
-            SetTextureImporterToSprite(assetPath);
-        }
+        // Sort results by original index to preserve order
+        var orderedResults = results.OrderBy(r => r.index).ToArray();
 
+        // Sequentially save and import in the Editor, with progress and cancel
+        for (int i = 0; i < orderedResults.Length; i++)
+        {
+            var (assetPath, imageData, _) = orderedResults[i];
+            if (EditorUtility.DisplayCancelableProgressBar("InventAI", $"Saving and importing {Path.GetFileName(assetPath)} ({i + 1}/{orderedResults.Length})", (float)i / orderedResults.Length))
+            {
+                canceled = true;
+                break;
+            }
+            if (imageData != null)
+            {
+                // Load original to get size
+                Texture2D original = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
+                Texture2D editedTexture = new Texture2D(2, 2);
+                editedTexture.LoadImage(imageData);
+                if (original != null && (editedTexture.width != original.width || editedTexture.height != original.height))
+                {
+                    editedTexture = ResizeTexture(editedTexture, original.width, original.height);
+                }
+                InventaiImageGeneration.SaveTextureAsPng(editedTexture, assetPath);
+                AssetDatabase.ImportAsset(assetPath);
+                SetTextureImporterToSprite(assetPath);
+            }
+        }
         EditorUtility.ClearProgressBar();
-        EditorUtility.DisplayDialog("InventAI", $"Preset applied to {guids.Length} images.", "OK");
+        if (canceled)
+            EditorUtility.DisplayDialog("InventAI", "Preset application canceled.", "OK");
+        else
+            EditorUtility.DisplayDialog("InventAI", $"Preset applied to {orderedResults.Length} images.", "OK");
     }
 
     /// <summary>
