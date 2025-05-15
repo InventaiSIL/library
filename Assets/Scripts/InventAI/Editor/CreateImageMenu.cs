@@ -161,6 +161,8 @@ public class CustomCreateMenu : MonoBehaviour
             string path = GetSelectedPathOrFallback() + "/InventAI_Image_" + randomString + ".png";
             InventaiImageGeneration.SaveTextureAsPng(texture, path);
             AssetDatabase.ImportAsset(path);
+            // Set import settings to Sprite (Single)
+            SetTextureImporterToSprite(path);
             EditorUtility.DisplayDialog("InventAI", "Image created at: " + path, "OK");
         }
         catch (Exception e)
@@ -282,6 +284,8 @@ public class CustomCreateMenu : MonoBehaviour
                 string path = folder + $"/InventAI_Batch_{i + 1}_{safePrompt}_{randomString}.png";
                 InventaiImageGeneration.SaveTextureAsPng(texture, path);
                 AssetDatabase.ImportAsset(path);
+                // Set import settings to Sprite (Single)
+                SetTextureImporterToSprite(path);
             }
             catch (Exception e)
             {
@@ -327,6 +331,8 @@ public class CustomCreateMenu : MonoBehaviour
                 Texture2D texture = await InventaiImageGeneration.GenerateTextureFromPromptAsync(fileName, apiKey, modelId, baseUrl, context);
                 InventaiImageGeneration.SaveTextureAsPng(texture, assetPath);
                 AssetDatabase.ImportAsset(assetPath);
+                // Set import settings to Sprite (Single)
+                SetTextureImporterToSprite(assetPath);
             }
             catch (Exception e)
             {
@@ -338,5 +344,20 @@ public class CustomCreateMenu : MonoBehaviour
             EditorUtility.DisplayDialog("InventAI", "Operation canceled.", "OK");
         else
             EditorUtility.DisplayDialog("InventAI", $"Preset applied to {guids.Length} images.", "OK");
+    }
+
+    /// <summary>
+    /// Sets the import settings of a texture asset to Sprite (Single) and reimports it.
+    /// </summary>
+    /// <param name="path">The asset path of the texture.</param>
+    private static void SetTextureImporterToSprite(string path)
+    {
+        var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+        if (importer != null)
+        {
+            importer.textureType = TextureImporterType.Sprite;
+            importer.spriteImportMode = SpriteImportMode.Single;
+            importer.SaveAndReimport();
+        }
     }
 }
