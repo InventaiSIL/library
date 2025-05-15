@@ -66,7 +66,8 @@ public class Hunyuan3DComponentEditor : Editor
         byte[] modelBytes = request.downloadHandler.data;
 
         // Save model to Assets/GeneratedModels/
-        string saveFolder = Path.Combine(Application.dataPath, "GeneratedModels");
+        string saveFolder = Path.Combine(Application.dataPath, component.resultFolder.Replace("Assets/", "").TrimStart('/', '\\'));
+
         if (!Directory.Exists(saveFolder))
             Directory.CreateDirectory(saveFolder);
 
@@ -78,7 +79,8 @@ public class Hunyuan3DComponentEditor : Editor
 
         // Refresh AssetDatabase
         AssetDatabase.Refresh();
-        string assetPath = "Assets/GeneratedModels/" + fileName;
+        string assetPath = Path.Combine("Assets", component.resultFolder.TrimStart('/', '\\'), fileName).Replace("\\", "/");
+
 
         GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
         if (model != null)
@@ -88,7 +90,7 @@ public class Hunyuan3DComponentEditor : Editor
         }
         else
         {
-            Debug.LogWarning("⚠️ Model saved but could not be loaded. Check file format support in Unity.");
+            Debug.LogWarning("⚠ Model saved but could not be loaded. Check file format support in Unity.");
         }
     }
 }
