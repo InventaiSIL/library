@@ -77,8 +77,15 @@ public class CustomCreateMenu : MonoBehaviour
             string apiKey = InventaiSettings.ApiKey;
             string baseUrl = InventaiSettings.BaseUrl;
             Texture2D texture = await InventaiImageGeneration.EditImageWithGptAsync(imagePath, prompt, apiKey, baseUrl);
+            // Resize to match original image size
+            Texture2D original = AssetDatabase.LoadAssetAtPath<Texture2D>(imagePath);
+            if (original != null && (texture.width != original.width || texture.height != original.height))
+            {
+                texture = ResizeTexture(texture, original.width, original.height);
+            }
             InventaiImageGeneration.SaveTextureAsPng(texture, imagePath);
             AssetDatabase.ImportAsset(imagePath);
+            SetTextureImporterToSprite(imagePath);
         }
         catch (Exception e)
         {
@@ -183,11 +190,18 @@ public class CustomCreateMenu : MonoBehaviour
             string apiKey = InventaiSettings.ApiKey;
             string baseUrl = InventaiSettings.BaseUrl;
             Texture2D texture = await InventaiImageGeneration.EditImageWithGptAsync(imagePath, prompt, apiKey, baseUrl);
+            // Resize to match original image size
+            Texture2D original = AssetDatabase.LoadAssetAtPath<Texture2D>(imagePath);
+            if (original != null && (texture.width != original.width || texture.height != original.height))
+            {
+                texture = ResizeTexture(texture, original.width, original.height);
+            }
             string dir = Path.GetDirectoryName(imagePath);
             string name = Path.GetFileNameWithoutExtension(imagePath);
             string newPath = Path.Combine(dir, name + "_inventai_variant.png");
-            InventaiImageGeneration.SaveTextureAsPng(texture, newPath);
+            InventaiImageGeneration.SaveTextureAsPng(texture, newPatha;
             AssetDatabase.ImportAsset(newPath);
+            SetTextureImporterToSprite(newPath);
             EditorUtility.DisplayDialog("InventAI", "Variant image created at: " + newPath, "OK");
         }
         catch (Exception e)
@@ -198,6 +212,26 @@ public class CustomCreateMenu : MonoBehaviour
         {
             EditorUtility.ClearProgressBar();
         }
+    }
+
+    /// <summary>
+    /// Resizes a Texture2D to the specified width and height using bilinear filtering. Guarantees exact size.
+    /// </summary>
+    private static Texture2D ResizeTexture(Texture2D source, int width, int height)
+    {
+        RenderTexture rt = RenderTexture.GetTemporary(width, height);
+        rt.filterMode = source.filterMode;
+        RenderTexture.active = rt;
+        Graphics.Blit(source, rt);
+        Texture2D result = new Texture2D(width, height, source.format, false);
+        result.filterMode = source.filterMode;
+        result.wrapMode = source.wrapMode;
+        // Read the full rect, ensuring exact size
+        result.ReadPixels(new Rect(0, 0, width, height), 0, 0, false);
+        result.Apply();
+        RenderTexture.active = null;
+        RenderTexture.ReleaseTemporary(rt);
+        return result;
     }
 
     private static string GetSelectedPathOrFallback()
