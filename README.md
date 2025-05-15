@@ -5,7 +5,7 @@ The InventAI Unity Library enables developers to generate 3D models and images d
 ## Documentation
 
 For detailed information on installation, usage instructions, examples, and
-more, please refer to the complete [documentation](https://inventai-docs.vercel.app/docs).
+more, please refer to the complete [documentation](https://inventai-docs.vercel.app/docs/tools/unity).
 
 ## Contributing
 
