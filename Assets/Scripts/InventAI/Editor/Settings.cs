@@ -216,26 +216,18 @@ static class InventaiSettingsProvider
                         _presets.RemoveAt(_selectedPresetIndex);
                         if (_selectedPresetIndex >= _presets.Count) _selectedPresetIndex = _presets.Count - 1;
                     }
-                    if (GUILayout.Button("Save Presets"))
+                    if (GUILayout.Button("Save Preset"))
                     {
                         SavePresets();
                     }
                     EditorGUILayout.EndHorizontal();
                 }
 
-                // Add a test connection button
+                // Add Apply preset button
                 EditorGUILayout.Space();
-                if (GUILayout.Button("Test Connection"))
+                if (GUILayout.Button("Apply preset to all images in Assets"))
                 {
-                    if (string.IsNullOrEmpty(apiKey))
-                    {
-                        EditorUtility.DisplayDialog("Error", "API Key cannot be empty", "OK");
-                    }
-                    else
-                    {
-                        // Here you would implement a connection test
-                        EditorUtility.DisplayDialog("Info", "Connection test not implemented yet.", "OK");
-                    }
+                    CustomCreateMenu.ApplyPresetToAllImages();
                 }
             },
 
