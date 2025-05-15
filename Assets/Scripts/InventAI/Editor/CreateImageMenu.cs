@@ -10,6 +10,7 @@ public class CustomCreateMenu : MonoBehaviour
 {
     private static string pendingEditImagePath = null;
     private static bool isEditMode = false;
+    private static bool isVariantMode = false;
 
     [MenuItem("Assets/Create/Asset with InventAI")]
     public static void CreateInventaiImage()
@@ -37,6 +38,27 @@ public class CustomCreateMenu : MonoBehaviour
         InventaiPromptWindow.Open();
     }
 
+    [MenuItem("Assets/Create variant with InventAI...", true)]
+    private static bool ValidateCreateVariantWithInventAI()
+    {
+        return Selection.activeObject is Texture2D;
+    }
+
+    [MenuItem("Assets/Create Variant with InventAI...")]
+    private static void CreateVariantWithInventAI()
+    {
+        var tex = Selection.activeObject as Texture2D;
+        if (tex == null)
+        {
+            EditorUtility.DisplayDialog("Error", "Please select a Texture2D asset.", "OK");
+            return;
+        }
+        pendingEditImagePath = AssetDatabase.GetAssetPath(tex);
+        isEditMode = false;
+        isVariantMode = true;
+        InventaiPromptWindow.Open();
+    }
+
     private static async void EditAndSaveImage(string imagePath, string prompt)
     {
         EditorUtility.DisplayProgressBar("Editing image with InventAI", "Please wait...", 0.5f);
@@ -45,12 +67,8 @@ public class CustomCreateMenu : MonoBehaviour
             string apiKey = InventaiSettings.ApiKey;
             string baseUrl = InventaiSettings.BaseUrl;
             Texture2D texture = await InventaiImageGeneration.EditImageWithGptAsync(imagePath, prompt, apiKey, baseUrl);
-            string dir = Path.GetDirectoryName(imagePath);
-            string name = Path.GetFileNameWithoutExtension(imagePath);
-            string newPath = Path.Combine(dir, name + "_inventai_edit.png");
-            InventaiImageGeneration.SaveTextureAsPng(texture, newPath);
-            AssetDatabase.ImportAsset(newPath);
-            EditorUtility.DisplayDialog("InventAI", "Edited image created at: " + newPath, "OK");
+            InventaiImageGeneration.SaveTextureAsPng(texture, imagePath);
+            AssetDatabase.ImportAsset(imagePath);
         }
         catch (Exception e)
         {
@@ -78,7 +96,7 @@ public class CustomCreateMenu : MonoBehaviour
             prompt = EditorGUILayout.TextField("Prompt", prompt);
             GUILayout.Space(10);
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button(isEditMode ? "Edit" : "Generate"))
+            if (GUILayout.Button(isEditMode ? "Edit" : (isVariantMode ? "Create Variant" : "Generate")))
             {
                 if (!string.IsNullOrEmpty(prompt))
                 {
@@ -87,6 +105,12 @@ public class CustomCreateMenu : MonoBehaviour
                         EditAndSaveImage(pendingEditImagePath, prompt);
                         pendingEditImagePath = null;
                         isEditMode = false;
+                    }
+                    else if (isVariantMode && !string.IsNullOrEmpty(pendingEditImagePath))
+                    {
+                        CreateVariantAndSaveImage(pendingEditImagePath, prompt);
+                        pendingEditImagePath = null;
+                        isVariantMode = false;
                     }
                     else
                     {
@@ -103,6 +127,7 @@ public class CustomCreateMenu : MonoBehaviour
             {
                 pendingEditImagePath = null;
                 isEditMode = false;
+                isVariantMode = false;
                 Close();
             }
             GUILayout.EndHorizontal();
@@ -127,6 +152,31 @@ public class CustomCreateMenu : MonoBehaviour
             InventaiImageGeneration.SaveTextureAsPng(texture, path);
             AssetDatabase.ImportAsset(path);
             EditorUtility.DisplayDialog("InventAI", "Image created at: " + path, "OK");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Request error: {e.Message}");
+        }
+        finally
+        {
+            EditorUtility.ClearProgressBar();
+        }
+    }
+
+    private static async void CreateVariantAndSaveImage(string imagePath, string prompt)
+    {
+        EditorUtility.DisplayProgressBar("Creating variant with InventAI", "Please wait...", 0.5f);
+        try
+        {
+            string apiKey = InventaiSettings.ApiKey;
+            string baseUrl = InventaiSettings.BaseUrl;
+            Texture2D texture = await InventaiImageGeneration.EditImageWithGptAsync(imagePath, prompt, apiKey, baseUrl);
+            string dir = Path.GetDirectoryName(imagePath);
+            string name = Path.GetFileNameWithoutExtension(imagePath);
+            string newPath = Path.Combine(dir, name + "_inventai_variant.png");
+            InventaiImageGeneration.SaveTextureAsPng(texture, newPath);
+            AssetDatabase.ImportAsset(newPath);
+            EditorUtility.DisplayDialog("InventAI", "Variant image created at: " + newPath, "OK");
         }
         catch (Exception e)
         {
