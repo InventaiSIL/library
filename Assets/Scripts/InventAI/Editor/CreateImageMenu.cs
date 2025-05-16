@@ -76,6 +76,25 @@ public class CustomCreateMenu : MonoBehaviour
         InventaiAnimationPromptWindow.Open();
     }
 
+    [MenuItem("Assets/Edit to Animation Sprite with InventAI", true)]
+    private static bool ValidateEditToAnimationSpriteWithInventAI()
+    {
+        return Selection.activeObject is Texture2D;
+    }
+
+    [MenuItem("Assets/Edit to Animation Sprite with InventAI")]
+    private static void EditToAnimationSpriteWithInventAI()
+    {
+        var tex = Selection.activeObject as Texture2D;
+        if (tex == null)
+        {
+            EditorUtility.DisplayDialog("Error", "Please select a Texture2D asset.", "OK");
+            return;
+        }
+        string imagePath = AssetDatabase.GetAssetPath(tex);
+        EditToAnimationSpritePromptWindow.Open(imagePath);
+    }
+
     private static async void EditAndSaveImage(string imagePath, string prompt)
     {
         EditorUtility.DisplayProgressBar("Editing image with InventAI", "Please wait...", 0.5f);
@@ -536,6 +555,92 @@ public class CustomCreateMenu : MonoBehaviour
             importer.textureType = TextureImporterType.Sprite;
             importer.spriteImportMode = SpriteImportMode.Multiple;
             importer.SaveAndReimport();
+        }
+    }
+
+    private class EditToAnimationSpritePromptWindow : EditorWindow
+    {
+        private string prompt = "";
+        private string imagePath;
+        public static void Open(string imagePath)
+        {
+            var window = ScriptableObject.CreateInstance<EditToAnimationSpritePromptWindow>();
+            window.titleContent = new GUIContent("Edit to Animation Sprite");
+            window.position = new Rect(Screen.width / 2, Screen.height / 2, 400, 100);
+            window.imagePath = imagePath;
+            window.ShowUtility();
+        }
+        void OnGUI()
+        {
+            GUILayout.Label("Enter a prompt for the animation sprite:", EditorStyles.wordWrappedLabel);
+            prompt = EditorGUILayout.TextField("Prompt", prompt);
+            GUILayout.Space(10);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Edit to Animation Sprite"))
+            {
+                if (!string.IsNullOrEmpty(prompt))
+                {
+                    CustomCreateMenu.EditImageToAnimationSpriteAndSave(imagePath, prompt);
+                    Close();
+                }
+                else
+                {
+                    EditorUtility.DisplayDialog("Error", "Prompt cannot be empty", "OK");
+                }
+            }
+            if (GUILayout.Button("Cancel"))
+            {
+                Close();
+            }
+            GUILayout.EndHorizontal();
+        }
+    }
+
+    /// <summary>
+    /// Modifies an existing image to an animation sprite using AI and saves the result as a sprite sheet.
+    /// </summary>
+    /// <param name="imagePath">The path to the existing image.</param>
+    /// <param name="prompt">The prompt to guide the animation sprite generation.</param>
+    public static async void EditImageToAnimationSpriteAndSave(string imagePath, string prompt)
+    {
+        EditorUtility.DisplayProgressBar("Editing to animation sprite with InventAI", "Please wait...", 0.5f);
+        try
+        {
+            string apiKey = InventaiSettings.ApiKey;
+            string modelId = InventaiSettings.ModelId;
+            string baseUrl = InventaiSettings.BaseUrl;
+            string context = InventaiPromptUtils.GetSelectedPresetAsString();
+            string fullPrompt =
+                "You are generating a high-quality 2D game asset sprite sheet for use in a professional game engine. " +
+                "The image should depict a clearly defined subject, with a fully transparent background. " +
+                "Do not include any text, watermarks, borders, or extraneous elements. The sprite sheet should be high resolution, clean, and ready for direct use in a 2D game. " +
+                "If the user prompt does not specify a background, assume full transparency. " +
+                "This is for an animation for a game, where the final image is divided into multiple sub-images, each serving as a continuous animation keyframe. " +
+                "Design the sequence to depict the keyframes transition smoothly and continuously, and include a number of frames that will be used to create the animation. " +
+                (!string.IsNullOrWhiteSpace(context) ? $"Request context (style, genre, etc): {context} " : "") +
+                $"User prompt (what the user wants to see): {prompt} " +
+                $" Use the provided image as the base for the animation sprite.";
+
+            Texture2D texture = await InventaiImageGeneration.EditImageToAnimationSpriteAsync(imagePath, fullPrompt, apiKey, modelId, baseUrl);
+
+            // Save as PNG in the same folder as the original image
+            string dir = Path.GetDirectoryName(imagePath);
+            string name = Path.GetFileNameWithoutExtension(imagePath);
+            string randomString = System.Guid.NewGuid().ToString().Substring(0, 8);
+            string newPath = Path.Combine(dir, name + "_inventai_animsprite_" + randomString + ".png");
+            InventaiImageGeneration.SaveTextureAsPng(texture, newPath);
+            AssetDatabase.ImportAsset(newPath);
+            // Set import settings to Sprite (Multiple)
+            SetTextureImporterToSpriteMultiple(newPath);
+            EditorUtility.DisplayDialog("InventAI", "Animation sprite created at: " + newPath, "OK");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Request error: {e.Message}");
+        }
+        finally
+        {
+            EditorUtility.ClearProgressBar();
         }
     }
 }

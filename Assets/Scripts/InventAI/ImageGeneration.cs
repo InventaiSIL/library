@@ -132,4 +132,24 @@ public static class InventaiImageGeneration
         byte[] editedImageData = System.Convert.FromBase64String(imageBase64);
         return editedImageData;
     }
+
+    /// <summary>
+    /// Edits an existing image to generate an animation sprite sheet using AI and returns the result as a Texture2D.
+    /// </summary>
+    /// <param name="imagePath">The path to the image to use as the base.</param>
+    /// <param name="fullPrompt">The full prompt describing the desired animation sprite.</param>
+    /// <param name="apiKey">The API key for authentication.</param>
+    /// <param name="modelId">The model ID to use for generation.</param>
+    /// <param name="baseUrl">The base URL of the image editing API.</param>
+    /// <returns>The generated animation sprite as a Texture2D.</returns>
+    public static async Task<Texture2D> EditImageToAnimationSpriteAsync(string imagePath, string fullPrompt, string apiKey, string modelId, string baseUrl)
+    {
+        // If your backend supports a dedicated endpoint, use it here. Otherwise, use EditImageWithGptAsync with the fullPrompt.
+        var result = await ImageGeneration.EditImageWithGptAsync(imagePath, fullPrompt, apiKey, baseUrl);
+        string imageBase64 = result.ImageBase64;
+        byte[] editedImageData = System.Convert.FromBase64String(imageBase64);
+        Texture2D texture = new Texture2D(2, 2);
+        texture.LoadImage(editedImageData);
+        return texture;
+    }
 }
